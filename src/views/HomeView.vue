@@ -2,22 +2,29 @@
 
 <div class="w-100 h-100">
 
-      <div class="card fixed-top mx-2 my-2" style="width: 18rem;" v-if="current">
-      <img :src="current.url" class="card-img-top">
-      <div class="card-body">
-        <h5 class="card-title">{{ current.id }}</h5>
-        <h6 class="card-subtitle mb-2 text-muted">{{ parseDate(current) }}</h6>
-        <p class="card-text">
-          <h6 class="my-1">Accuracy: <span class="fw-bolder">{{ (current.accuracy * 100).toFixed(2) }}&#x25;</span></h6>
-          <div class="progress">
-            <div class="progress-bar" :style="{ width: current.accuracy * 100 + '%' }" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
-          </div>
-          <h6 class="my-1">Tags</h6>
-          <span class="badge bg-primary me-1" v-for="tag in parseTags(current)">{{ tag }}</span>
-        </p>
-        <!-- <a href="#" class="btn btn-primary">Go somewhere</a> -->
+    <div class="fixed-top mx-2 my-2" style="width: 300px">
+      <div class="card" style="width: 300px" v-if="current">
+        <img :src="current.url" class="card-img-top">
+        <div class="card-body">
+          <h5 class="card-title">{{ current.id }}</h5>
+          <h6 class="card-subtitle mb-2 text-muted">{{ parseDate(current) }}</h6>
+          <p class="card-text">
+            <h6 class="my-1">Accuracy: <span class="fw-bolder">{{ (current.accuracy * 100).toFixed(2) }}&#x25;</span></h6>
+            <div class="progress">
+              <div class="progress-bar" :style="{ width: current.accuracy * 100 + '%' }" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <h6 class="my-1">Tags</h6>
+            <span class="badge bg-primary me-1" v-for="tag in parseTags(current)">{{ tag }}</span>
+          </p>
+          <!-- <a href="#" class="btn btn-primary">Go somewhere</a> -->
+        </div>
       </div>
+
+      <!-- <div class="card mt-2" style="width: 300px">
+        <canvas class="card-img-top" id="myChart" width="300" height="300" ></canvas>
+      </div> -->
     </div>
+
     <div id="mapContainer" class="w-100 vh-100 d-inline-block"></div>
 
     </div>
@@ -27,7 +34,8 @@
 import mapboxgl from "mapbox-gl";
 import data from "../data/temp.json";
 import S2 from "s2-geometry";
-import * as turf from '@turf/turf'
+import * as turf from '@turf/turf';
+import Chart from 'chart.js/auto';
 
 export default {
   name: "BaseMap",
@@ -60,6 +68,35 @@ export default {
   },
   mounted() {
     mapboxgl.accessToken = this.accessToken;
+
+    // const myChart = new Chart("myChart", {
+    //     type: 'scatter',
+    //     data: {
+    //       datasets: [{
+    //         label: 'Scatter Dataset',
+    //         data: [{x: -10,y: 0}, {
+    //           x: 0,
+    //           y: 10
+    //         }, {
+    //           x: 10,
+    //           y: 5
+    //         }, {
+    //           x: 0.5,
+    //           y: 5.5
+    //         }],
+    //         backgroundColor: 'rgb(255, 99, 132)'
+    //       }],
+    //     },
+    //     options: {
+    //         scales: {
+    //             y: {
+    //                 beginAtZero: true
+    //             }
+    //         },
+    //         responsive: false,
+    //         showLine: true
+    //     }
+    // });
 
     const map = new mapboxgl.Map({
       container: "mapContainer",
