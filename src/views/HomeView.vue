@@ -1,5 +1,26 @@
 <template>
-  <div id="mapContainer" class="basemap"></div>
+
+<div class="w-100 h-100">
+
+      <div class="card fixed-top mx-2 my-2" style="width: 18rem;" v-if="current">
+      <img :src="current.url" class="card-img-top">
+      <div class="card-body">
+        <h5 class="card-title">{{ current.id }}</h5>
+        <h6 class="card-subtitle mb-2 text-muted">{{ parseDate(current) }}</h6>
+        <p class="card-text">
+          <h6 class="my-1">Accuracy: <span class="fw-bolder">{{ (current.accuracy * 100).toFixed(2) }}&#x25;</span></h6>
+          <div class="progress">
+            <div class="progress-bar" :style="{ width: current.accuracy * 100 + '%' }" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <h6 class="my-1">Tags</h6>
+          <span class="badge bg-primary me-1" v-for="tag in parseTags(current)">{{ tag }}</span>
+        </p>
+        <!-- <a href="#" class="btn btn-primary">Go somewhere</a> -->
+      </div>
+    </div>
+    <div id="mapContainer" class="w-100 vh-100 d-inline-block"></div>
+
+    </div>
 </template>
 
 <script>
@@ -13,7 +34,29 @@ export default {
   data() {
     return {
       accessToken: "pk.eyJ1IjoidG9td2Fzc2luZyIsImEiOiJjbDlsYTlxbHcwYTBzM3dwY3FmNDE2cGRkIn0.n-CxBweE9w8WUlca9aMyQA",
+      current: null,
     };
+  },
+  methods: {
+    parseTags(entry) {
+      if (entry.tags) {
+        return entry.tags.split(",")
+          .map((tag) => decodeURIComponent(tag.trim())
+          .replaceAll("+", " "));
+      }
+
+      return [];
+    },
+    parseDate(entry) {
+      if (entry.year) {
+        const date = new Date();
+        date.setFullYear(entry.year);
+        date.setMonth(entry.month);
+        return date.toLocaleDateString();
+      }
+
+      return new Date();
+    },
   },
   mounted() {
     mapboxgl.accessToken = this.accessToken;
@@ -96,19 +139,30 @@ export default {
               "paint": {}
           });
 
+      var predictedMarker = null;
+
       for (const entry of data) {
+        console.log(entry);
         const marker = new ClickableMarker()
           .setLngLat([entry.lon, entry.lat])
           .onClick(() => { // onClick() is a thing now!
-            const popup = new mapboxgl.Popup()
-            .setLngLat([entry.lon, entry.lat])
-            .setHTML('<h1>' + entry.lon + '</h1>')
-            .addTo(map);
+            this.current = entry;
+            // const popup = new mapboxgl.Popup()
+            // .setLngLat([entry.lon, entry.lat])
+            // .setHTML('<h1>' + entry.lon + '</h1>')
+            // .addTo(map);
 
             const latlng = S2.S2.idToLatLng(parseInt(entry.S2CellId, 16).toString());
             const predictedLocation = [latlng.lng, latlng.lat]
 
-            const predictedMarker = new mapboxgl.Marker({color: 'red'})
+            if (predictedMarker) {
+              predictedMarker.remove();
+              linestring.geometry.coordinates = [];
+              map.getSource('geojson').setData(geojson);
+              predictedMarker = null;
+            }
+
+            predictedMarker = new mapboxgl.Marker({color: 'red'})
             .setLngLat(predictedLocation)
             .addTo(map);
 
@@ -126,12 +180,12 @@ export default {
 
             map.getSource('geojson').setData(geojson);
 
-            popup.on('close', () => {
-              linestring.geometry.coordinates = [];
-              map.getSource('geojson').setData(geojson);
+            // popup.on('close', () => {
+            //   linestring.geometry.coordinates = [];
+            //   map.getSource('geojson').setData(geojson);
 
-              predictedMarker.remove();
-            });
+            //   predictedMarker.remove();
+            // });
         }).addTo(map);
       }
       });
@@ -141,12 +195,8 @@ export default {
 
 
 <style scoped>
-body { margin: 0; padding: 0; }
 
-#mapContainer {
-    width: 100vw;
-    height: 100vh;
-}
+
 
 
 
