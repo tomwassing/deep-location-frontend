@@ -25,9 +25,40 @@
 
 <script>
 import mapboxgl from "mapbox-gl";
-import data from "../data/temp.json";
+// import data from "../assets/temp.json";
+import groups from "../data/lat_lon_group.json";
 import S2 from "s2-geometry";
 import * as turf from '@turf/turf';
+
+
+function myGeoJson() {
+  const geojson = {
+    'type': 'FeatureCollection',
+    'features': []
+  };
+
+  for (const group of groups) {
+    const parts = group.lat_lon_group.split("_");
+    const lat = parseFloat(parts[0]);
+    const lon = parseFloat(parts[1]);
+
+    const feature = {
+      'type': 'Feature',
+      'properties': {
+        'id': group.lat_lon_group,
+        'count': group.count,
+      },
+      'geometry': {
+        'type': 'Point',
+        'coordinates': [lon, lat]
+      }
+    };
+
+    geojson.features.push(feature);
+  }
+
+  return geojson;
+}
 
 export default {
   name: "BaseMap",
@@ -145,51 +176,165 @@ export default {
         "paint": {}
       });
 
+      // Add clustesr
+
+      map.addSource('earthquakes', {
+        type: 'geojson',
+        // Point to GeoJSON data. This example visualizes all M1.0+ earthquakes
+        // from 12/22/15 to 1/21/16 as logged by USGS' Earthquake hazards program.
+        data: myGeoJson(),
+        cluster: true,
+        clusterMaxZoom: 5000, // Max zoom to cluster points on
+        clusterRadius: 50, // Radius of each cluster when clustering 
+        clusterProperties: { // keep separate counts for each magnitude category in a cluster
+          "count": ["+", ["get", "count"]]
+        }
+      });
+
+      map.addLayer({
+        id: 'clusters',
+        type: 'circle',
+        source: 'earthquakes',
+        filter: ['has', 'point_count'],
+        paint: {
+          // Use step expressions (https://docs.mapbox.com/mapbox-gl-js/style-spec/#expressions-step)
+          // with three steps to implement three types of circles:
+          //   * Blue, 20px circles when point count is less than 100
+          //   * Yellow, 30px circles when point count is between 100 and 750
+          //   * Pink, 40px circles when point count is greater than or equal to 750
+          'circle-color': [
+            'step',
+            ['get', 'point_count'],
+            '#51bbd6',
+            100,
+            '#f1f075',
+            750,
+            '#f28cb1'
+          ],
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            20,
+            100,
+            30,
+            750,
+            40
+          ]
+        }
+      });
+
+      map.addLayer({
+        id: 'cluster-count',
+        type: 'symbol',
+        source: 'earthquakes',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{count}',
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 12
+        }
+      });
+
+      map.addLayer({
+        id: 'unclustered-point',
+        type: 'circle',
+        source: 'earthquakes',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': '#11b4da',
+          'circle-radius': 4,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': '#fff'
+        }
+      });
+
+
+
+
       var predictedMarker = null;
+      var markers = []
 
-      for (const entry of data) {
-        const marker = new ClickableMarker()
-          .setLngLat([entry.lon, entry.lat])
-          .onClick(() => {
 
-            // Set the current entry.
-            this.current = entry;
+      const setMarkers = (data) => {
+        for (const marker of markers) {
+          marker.remove();
+        }
 
-            // Convert predicted location to lat/lon.
-            const latlng = S2.S2.idToLatLng(parseInt(entry.S2CellId, 16).toString());
-            const predictedLocation = [latlng.lng, latlng.lat]
-
-            // Reset the previous predicted marker and distance line.
-            if (predictedMarker) {
-              predictedMarker.remove();
-              linestring.geometry.coordinates = [];
+        for (const entry of data) {
+          const marker = new ClickableMarker()
+            .setLngLat([entry.lon, entry.lat])
+            .onClick(() => {
+  
+              // Set the current entry.
+              this.current = entry;
+  
+              // Convert predicted location to lat/lon.
+              const latlng = S2.S2.idToLatLng(parseInt(entry.S2CellId, 16).toString());
+              const predictedLocation = [latlng.lng, latlng.lat]
+  
+              // Reset the previous predicted marker and distance line.
+              if (predictedMarker) {
+                predictedMarker.remove();
+                linestring.geometry.coordinates = [];
+                map.getSource('geojson').setData(geojson);
+                predictedMarker = null;
+              }
+  
+              // Add a new predicted marker
+              predictedMarker = new mapboxgl.Marker({ color: 'red' })
+                .setLngLat(predictedLocation)
+                .addTo(map);
+  
+              // Zoom to show both markers.
+              map.fitBounds([[entry.lon, entry.lat], [latlng.lng, latlng.lat]], {
+                padding: 100
+              });
+  
+              // Set the distance line start and end.
+              linestring.geometry.coordinates = [[entry.lon, entry.lat], predictedLocation]
+  
+              // Add distance to line.
+              const distance = turf.distance([entry.lon, entry.lat], predictedLocation);
+              linestring.properties.title = distance.toLocaleString() + ' km';
+  
+              // Add the line to the map.
+              geojson.features.push(linestring);
               map.getSource('geojson').setData(geojson);
-              predictedMarker = null;
-            }
+  
+            }).addTo(map);
 
-            // Add a new predicted marker
-            predictedMarker = new mapboxgl.Marker({ color: 'red' })
-              .setLngLat(predictedLocation)
-              .addTo(map);
-
-            // Zoom to show both markers.
-            map.fitBounds([[entry.lon, entry.lat], [latlng.lng, latlng.lat]], {
-              padding: 100
-            });
-
-            // Set the distance line start and end.
-            linestring.geometry.coordinates = [[entry.lon, entry.lat], predictedLocation]
-
-            // Add distance to line.
-            const distance = turf.distance([entry.lon, entry.lat], predictedLocation);
-            linestring.properties.title = distance.toLocaleString() + ' km';
-
-            // Add the line to the map.
-            geojson.features.push(linestring);
-            map.getSource('geojson').setData(geojson);
-
-          }).addTo(map);
+          markers.push(marker);
+        }
       }
+
+      map.on('zoomend', () => {
+        console.log('zoomend', map.getZoom());
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+
+        const degree = 3;
+        const latKey = degree * Math.floor(center.lat / degree);
+        const lngKey = degree * Math.floor(center.lng / degree);
+
+        console.log(latKey, lngKey);
+
+        if (zoom > 8) {
+          fetch('/src/assets/temp2.json')
+            .then(data => data.text())
+            .then(data => {
+
+              const jsonData = data.trim().split("\n").map(JSON.parse);
+              setMarkers(jsonData);
+            });
+        } else {
+          console.log("remove?")
+          for (const marker of markers) {
+            marker.remove();
+          }
+        }
+
+      });
+
     });
   },
 };
