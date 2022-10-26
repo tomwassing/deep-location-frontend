@@ -95,7 +95,7 @@ export default {
       container: "mapContainer",
       style: "mapbox://styles/mapbox/streets-v11",
       center: [4.866780, 52.334179],
-      zoom: 8,
+      zoom: 4,
     });
 
 
