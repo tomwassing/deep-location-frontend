@@ -5,7 +5,7 @@
       <div class="card" style="width: 300px" v-if="current">
         <img :src="current.url" class="card-img-top">
         <div class="card-body">
-          <h5 class="card-title">{{ current.id }}</h5>
+          <h5 class="card-title">{{ current.title.replaceAll("+", " ") ?? current.id }}</h5>
           <h6 class="card-subtitle mb-2 text-muted">{{ parseDate(current) }}</h6>
           <p class="card-text">
           <h6 class="my-1">Accuracy: <span class="fw-bolder">{{ (current.accuracy * 100).toFixed(2) }}&#x25;</span></h6>
@@ -25,11 +25,9 @@
 
 <script>
 import mapboxgl from "mapbox-gl";
-// import data from "../assets/temp.json";
 import groups from "../data/lat_lon_group.json";
 import S2 from "s2-geometry";
 import * as turf from '@turf/turf';
-
 
 function myGeoJson() {
   const geojson = {
@@ -235,25 +233,8 @@ export default {
         }
       });
 
-      map.addLayer({
-        id: 'unclustered-point',
-        type: 'circle',
-        source: 'earthquakes',
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-color': '#11b4da',
-          'circle-radius': 4,
-          'circle-stroke-width': 1,
-          'circle-stroke-color': '#fff'
-        }
-      });
-
-
-
-
       var predictedMarker = null;
       var markers = []
-
 
       const setMarkers = (data) => {
         for (const marker of markers) {
@@ -308,18 +289,16 @@ export default {
       }
 
       map.on('zoomend', () => {
-        console.log('zoomend', map.getZoom());
         const center = map.getCenter();
         const zoom = map.getZoom();
 
-        const degree = 3;
+        const degree = 1;
         const latKey = degree * Math.floor(center.lat / degree);
         const lngKey = degree * Math.floor(center.lng / degree);
 
-        console.log(latKey, lngKey);
-
-        if (zoom > 8) {
-          fetch('/src/assets/temp2.json')
+        if (zoom > 6) {
+          const key = `lat_lon_group=${latKey}_${lngKey}`;
+          fetch(`/src/assets/partition/${key}/result.json`)
             .then(data => data.text())
             .then(data => {
 
@@ -327,10 +306,11 @@ export default {
               setMarkers(jsonData);
             });
         } else {
-          console.log("remove?")
+          // Remove markers as we are zoomed out.
           for (const marker of markers) {
             marker.remove();
           }
+          markers = [];
         }
 
       });
