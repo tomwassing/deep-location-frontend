@@ -298,7 +298,9 @@ export default {
 
         if (zoom > 6) {
           const key = `lat_lon_group=${latKey}_${lngKey}`;
-          fetch(`/src/assets/partition/${key}/result.json`)
+          const url = new URL(`/src/assets/partition/${key}/result.json`, import.meta.url).href;
+
+          fetch(url)
             .then(data => data.text())
             .then(data => {
 
