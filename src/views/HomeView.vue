@@ -62,7 +62,6 @@ export default {
   name: "BaseMap",
   data() {
     return {
-      accessToken: "pk.eyJ1IjoidG9td2Fzc2luZyIsImEiOiJjbDlsYTlxbHcwYTBzM3dwY3FmNDE2cGRkIn0.n-CxBweE9w8WUlca9aMyQA",
       current: null,
     };
   },
@@ -88,7 +87,7 @@ export default {
     },
   },
   mounted() {
-    mapboxgl.accessToken = this.accessToken;
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_API_KEY;
 
     // Initialize map, zoomed on the VU.
     const map = new mapboxgl.Map({
